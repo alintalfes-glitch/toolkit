@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#1a1a1a">
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net;
+        worker-src 'self' blob:;
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: blob:;
+        font-src 'self';
+        connect-src 'self' https://cdn.jsdelivr.net;
+        frame-src 'self';
+    ">
+    <title>Photo & Video Forensics Toolkit</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="assets/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+    <script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <header class="app-header">
+            <button class="menu-toggle" id="menuToggle" aria-label="Meniu">☰</button>
+            <h1>Forensics Toolkit</h1>
+            <button class="theme-toggle" id="themeToggle" aria-label="Comutare temă">🌓</button>
+        </header>
+
+        <nav class="sidebar" id="sidebar">
+            <ul class="nav-list">
+                <li><button class="nav-link active" data-page="home">🏠 Acasă</button></li>
+                <li><button class="nav-link" data-page="photo">📷 FOTO</button></li>
+                <li><button class="nav-link" data-page="video">🎬 VIDEO</button></li>
+                <li><button class="nav-link" data-page="metadata">📋 METADATA</button></li>
+                <li><button class="nav-link" data-page="hash">🔐 HASH</button></li>
+                <li><button class="nav-link" data-page="analysis">🔍 ANALIZĂ IMAGINE</button></li>
+                <li><button class="nav-link" data-page="comparison">⚖️ COMPARARE</button></li>
+                <li><button class="nav-link" data-page="measurement">📏 MĂSURĂTORI</button></li>
+                <li><button class="nav-link" data-page="ocr">📝 OCR</button></li>
+                <li><button class="nav-link" data-page="report">📄 RAPORT</button></li>
+                <li><button class="nav-link" data-page="settings">⚙️ SETĂRI</button></li>
+            </ul>
+        </nav>
+
+        <nav class="bottom-nav" id="bottomNav">
+            <button class="bottom-link active" data-page="home">🏠</button>
+            <button class="bottom-link" data-page="photo">📷</button>
+            <button class="bottom-link" data-page="video">🎬</button>
+            <button class="bottom-link" data-page="metadata">📋</button>
+            <button class="bottom-link" data-page="hash">🔐</button>
+            <button class="bottom-link" data-page="analysis">🔍</button>
+            <button class="bottom-link" data-page="comparison">⚖️</button>
+            <button class="bottom-link" data-page="measurement">📏</button>
+            <button class="bottom-link" data-page="ocr">📝</button>
+            <button class="bottom-link" data-page="report">📄</button>
+            <button class="bottom-link" data-page="settings">⚙️</button>
+        </nav>
+
+        <main class="content">
+            <!-- HOME -->
+            <section class="page active" id="page-home">
+                <div class="card">
+                    <h2>Selectare fișier</h2>
+                    <div class="drop-zone" id="dropZone">
+                        <p>Trageți și plasați un fișier aici sau</p>
+                        <label class="btn btn-primary">
+                            Alege fișier
+                            <input type="file" id="fileInput" accept="image/*,video/*" hidden>
+                        </label>
+                        <button class="btn btn-secondary" id="cameraBtn">📸 Folosește camera</button>
+                        <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
+                    </div>
+                    <div id="fileInfo" class="file-info"></div>
+                    <button class="btn btn-primary" id="startAnalysisBtn" disabled>Începe analiza</button>
+                </div>
+                <div class="card">
+                    <h3>Limitări</h3>
+                    <p>Această aplicație oferă indicatori tehnici pentru analiză. Nu emite concluzii automate despre autenticitate sau manipulare. Rezultatele trebuie interpretate de un specialist.</p>
+                </div>
+            </section>
+
+            <!-- PHOTO -->
+            <section class="page" id="page-photo">
+                <div class="card">
+                    <h2>Analiză Foto</h2>
+                    <div id="photoInfo"></div>
+                    <div class="toolbar">
+                        <button class="btn" id="zoomIn">➕</button>
+                        <button class="btn" id="zoomOut">➖</button>
+                        <select id="zoomLevel">
+                            <option value="1">1x</option>
+                            <option value="2">2x</option>
+                            <option value="4">4x</option>
+                            <option value="8">8x</option>
+                            <option value="16">16x</option>
+                        </select>
+                        <button class="btn" id="rotateBtn">🔄 90°</button>
+                        <button class="btn" id="flipH">↔️</button>
+                        <button class="btn" id="flipV">↕️</button>
+                        <button class="btn" id="cropBtn">✂️ Crop</button>
+                        <button class="btn" id="resetPhoto">♻️ Reset</button>
+                        <button class="btn" id="fullscreenBtn">⛶</button>
+                        <button class="btn" id="exportImage">💾 Export procesat</button>
+                    </div>
+                    <div class="canvas-container" id="photoCanvasContainer">
+                        <canvas id="photoCanvas"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIDEO -->
+            <section class="page" id="page-video">
+                <div class="card">
+                    <h2>Analiză Video</h2>
+                    <div id="videoInfo"></div>
+                    <div class="video-container">
+                        <video id="videoPlayer" controls></video>
+                    </div>
+                    <div class="toolbar">
+                        <button class="btn" id="frameBackward">⏪ -1 frame</button>
+                        <button class="btn" id="frameForward">+1 frame ⏩</button>
+                        <select id="playbackSpeed">
+                            <option value="0.1">0.1x</option>
+                            <option value="0.25">0.25x</option>
+                            <option value="0.5">0.5x</option>
+                            <option value="1" selected>1x</option>
+                            <option value="2">2x</option>
+                        </select>
+                        <span id="videoTimestamp">00:00:00.000</span>
+                    </div>
+                    <div class="tabs">
+                        <button class="tab active" data-tab="frame-extract">Extragere Frame</button>
+                        <button class="tab" data-tab="contact-sheet">Contact Sheet</button>
+                        <button class="tab" data-tab="timeline">Timeline</button>
+                    </div>
+                    <div class="tab-content active" id="frame-extract">
+                        <button class="btn" id="extractFrameBtn">Extrage frame curent</button>
+                        <button class="btn" id="exportFramePNG">Export PNG</button>
+                        <button class="btn" id="exportFrameJPEG">Export JPEG</button>
+                        <button class="btn" id="hashFrameBtn">Hash frame</button>
+                        <div id="extractedFrameInfo"></div>
+                        <canvas id="frameCanvas"></canvas>
+                    </div>
+                    <div class="tab-content" id="contact-sheet">
+                        <label>Număr frame-uri:</label>
+                        <select id="contactSheetCount">
+                            <option value="12">12</option>
+                            <option value="24">24</option>
+                            <option value="48">48</option>
+                            <option value="100">100</option>
+                        </select>
+                        <label>Interval (secunde):</label>
+                        <input type="number" id="contactSheetInterval" value="1" min="0.1" step="0.1">
+                        <button class="btn" id="generateContactSheet">Generează</button>
+                        <button class="btn" id="exportContactSheet">Export PNG</button>
+                        <div id="contactSheetContainer"></div>
+                    </div>
+                    <div class="tab-content" id="timeline">
+                        <div id="timelineContainer"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- METADATA -->
+            <section class="page" id="page-metadata">
+                <div class="card">
+                    <h2>Metadata EXIF</h2>
+                    <div id="metadataAvailable"></div>
+                    <div id="metadataUnavailable"></div>
+                    <div id="gpsSection"></div>
+                </div>
+            </section>
+
+            <!-- HASH -->
+            <section class="page" id="page-hash">
+                <div class="card">
+                    <h2>Hash criptografic</h2>
+                    <div id="hashResults"></div>
+                    <div id="hashComparison"></div>
+                    <button class="btn" id="hashCompareBtn">Compară cu alt fișier</button>
+                    <input type="file" id="hashCompareInput" hidden>
+                </div>
+            </section>
+
+            <!-- ANALYSIS -->
+            <section class="page" id="page-analysis">
+                <div class="card">
+                    <h2>Analiză Imagine</h2>
+                    <div class="tabs">
+                        <button class="tab active" data-tab="histogram">Histogramă</button>
+                        <button class="tab" data-tab="channels">Canale</button>
+                        <button class="tab" data-tab="pixel-inspector">Pixel Inspector</button>
+                        <button class="tab" data-tab="adjustments">Ajustări</button>
+                        <button class="tab" data-tab="ela">ELA</button>
+                    </div>
+                    <div class="tab-content active" id="histogram">
+                        <div class="histogram-controls">
+                            <label><input type="checkbox" id="chR" checked> R</label>
+                            <label><input type="checkbox" id="chG" checked> G</label>
+                            <label><input type="checkbox" id="chB" checked> B</label>
+                            <label><input type="checkbox" id="chLum" checked> Luminanță</label>
+                        </div>
+                        <canvas id="histogramCanvas"></canvas>
+                        <div id="histogramStats"></div>
+                    </div>
+                    <div class="tab-content" id="channels">
+                        <div class="channel-grid">
+                            <div><h3>Original</h3><canvas class="channel-canvas" id="channelOriginal"></canvas></div>
+                            <div><h3>Red</h3><canvas class="channel-canvas" id="channelRed"></canvas></div>
+                            <div><h3>Green</h3><canvas class="channel-canvas" id="channelGreen"></canvas></div>
+                            <div><h3>Blue</h3><canvas class="channel-canvas" id="channelBlue"></canvas></div>
+                            <div><h3>Grayscale</h3><canvas class="channel-canvas" id="channelGray"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="tab-content" id="pixel-inspector">
+                        <div class="pixel-inspector-container">
+                            <canvas id="pixelInspectorCanvas"></canvas>
+                            <div id="pixelInfo"></div>
+                        </div>
+                        <div id="magnifier"></div>
+                    </div>
+                    <div class="tab-content" id="adjustments">
+                        <div class="slider-group">
+                            <label>Luminozitate <input type="range" id="brightness" min="-100" max="100" value="0"></label>
+                            <label>Contrast <input type="range" id="contrast" min="-100" max="100" value="0"></label>
+                            <label>Saturație <input type="range" id="saturation" min="-100" max="100" value="0"></label>
+                            <label>Gamma <input type="range" id="gamma" min="0.1" max="3" step="0.1" value="1"></label>
+                        </div>
+                        <button class="btn" id="adjustGrayscale">Grayscale</button>
+                        <button class="btn" id="adjustInvert">Invert</button>
+                        <button class="btn" id="adjustSharpen">Sharpen</button>
+                        <button class="btn" id="adjustBlur">Blur</button>
+                        <button class="btn" id="adjustThreshold">Threshold</button>
+                        <button class="btn" id="adjustEdge">Edge Detection</button>
+                        <button class="btn" id="adjustReset">Reset ajustări</button>
+                        <button class="btn" id="exportAdjusted">Export procesat</button>
+                        <canvas id="adjustmentCanvas"></canvas>
+                    </div>
+                    <div class="tab-content" id="ela">
+                        <div class="ela-warning">⚠️ ELA este un instrument de vizualizare a diferențelor de compresie și NU constituie, singur, dovada unei manipulări a imaginii. Rezultatul trebuie interpretat în context.</div>
+                        <label>Calitate JPEG <input type="number" id="elaQuality" value="75" min="1" max="100"></label>
+                        <label>Amplificare <input type="range" id="elaAmplification" min="1" max="30" value="10"></label>
+                        <button class="btn" id="elaRun">Rulează ELA</button>
+                        <canvas id="elaCanvas"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- COMPARISON -->
+            <section class="page" id="page-comparison">
+                <div class="card">
+                    <h2>Comparare Imagini</h2>
+                    <div class="comparison-controls">
+                        <label>Imagine A <input type="file" id="compareA" accept="image/*"></label>
+                        <label>Imagine B <input type="file" id="compareB" accept="image/*"></label>
+                        <div class="tabs">
+                            <button class="tab active" data-tab="side-by-side">Side-by-Side</button>
+                            <button class="tab" data-tab="overlay">Overlay</button>
+                            <button class="tab" data-tab="difference">Diferență</button>
+                            <button class="tab" data-tab="blink">Blink</button>
+                        </div>
+                        <input type="range" id="overlayOpacity" min="0" max="1" step="0.01" value="0.5">
+                    </div>
+                    <div class="tab-content active" id="side-by-side">
+                        <div class="compare-container">
+                            <canvas id="compareCanvasA"></canvas>
+                            <canvas id="compareCanvasB"></canvas>
+                        </div>
+                    </div>
+                    <div class="tab-content" id="overlay">
+                        <div class="compare-container">
+                            <canvas id="overlayCanvas"></canvas>
+                        </div>
+                    </div>
+                    <div class="tab-content" id="difference">
+                        <div class="compare-container">
+                            <canvas id="differenceCanvas"></canvas>
+                        </div>
+                    </div>
+                    <div class="tab-content" id="blink">
+                        <div class="compare-container">
+                            <canvas id="blinkCanvas"></canvas>
+                        </div>
+                        <button class="btn" id="blinkToggle">Start Blink</button>
+                    </div>
+                    <button class="btn" id="compareReset">Reset</button>
+                </div>
+                <div class="card">
+                    <h2>Corecție Perspectivă</h2>
+                    <p>Selectați 4 puncte A, B, C, D în ordine.</p>
+                    <div class="perspective-container">
+                        <canvas id="perspectiveCanvas"></canvas>
+                    </div>
+                    <button class="btn" id="perspectiveReset">Reset</button>
+                    <button class="btn" id="perspectiveApply">Aplică</button>
+                    <button class="btn" id="perspectiveExport">Export</button>
+                </div>
+            </section>
+
+            <!-- MEASUREMENT -->
+            <section class="page" id="page-measurement">
+                <div class="card">
+                    <h2>Măsurători</h2>
+                    <p>1. Trasați o linie peste un reper cunoscut. 2. Introduceți lungimea reală. 3. Măsurați obiecte.</p>
+                    <label>Lungime reală: <input type="number" id="realLength" step="0.01" min="0"></label>
+                    <select id="unitSelect">
+                        <option value="mm">mm</option>
+                        <option value="cm">cm</option>
+                        <option value="m">m</option>
+                        <option value="inch">inch</option>
+                    </select>
+                    <button class="btn" id="calibrateBtn">Calibrează</button>
+                    <button class="btn" id="measureDistance">Distanță</button>
+                    <button class="btn" id="measureAngle">Unghi</button>
+                    <button class="btn" id="measureDiameter">Diametru</button>
+                    <button class="btn" id="measurePerimeter">Perimetru</button>
+                    <button class="btn" id="measureArea">Suprafață</button>
+                    <button class="btn" id="measureReset">Reset</button>
+                    <div class="measurement-container">
+                        <canvas id="measurementCanvas"></canvas>
+                    </div>
+                    <div id="measurementResult"></div>
+                    <p class="warning">Măsurarea este valabilă în limitele ipotezelor de calibrare și perspectivei imaginii.</p>
+                </div>
+            </section>
+
+            <!-- OCR -->
+            <section class="page" id="page-ocr">
+                <div class="card">
+                    <h2>OCR</h2>
+                    <label>Limbă: 
+                        <select id="ocrLanguage">
+                            <option value="ron">Română</option>
+                            <option value="eng">Engleză</option>
+                            <option value="ron+eng">Română + Engleză</option>
+                        </select>
+                    </label>
+                    <button class="btn" id="ocrPreprocess">Preprocesare</button>
+                    <button class="btn" id="ocrRun">Rulează OCR</button>
+                    <div id="ocrProgress"></div>
+                    <div id="ocrResult"></div>
+                    <div id="ocrEntities"></div>
+                    <button class="btn" id="ocrCopy">Copiază</button>
+                    <button class="btn" id="ocrDownloadTxt">Descarcă TXT</button>
+                    <button class="btn" id="ocrDownloadJson">Descarcă JSON</button>
+                </div>
+            </section>
+
+            <!-- REPORT -->
+            <section class="page" id="page-report">
+                <div class="card">
+                    <h2>Raport de Analiză</h2>
+                    <textarea id="reportObservations" placeholder="Observații manuale..."></textarea>
+                    <button class="btn" id="reportGenerate">Generează Raport</button>
+                    <button class="btn" id="reportExportHTML">Export HTML</button>
+                    <button class="btn" id="reportPrint">Print/PDF</button>
+                    <div id="reportPreview"></div>
+                </div>
+            </section>
+
+            <!-- SETTINGS -->
+            <section class="page" id="page-settings">
+                <div class="card">
+                    <h2>Setări</h2>
+                    <label>Temă: <button class="btn" id="themeToggle2">Comută 🌓</button></label>
+                </div>
+                <div class="card">
+                    <h2>Case Workspace</h2>
+                    <button class="btn" id="workspaceCreate">Creează caz nou</button>
+                    <input type="text" id="workspaceName" placeholder="CASE-2026-001">
+                    <div id="workspaceList"></div>
+                    <button class="btn" id="workspaceExport">Export ZIP</button>
+                </div>
+                <div class="card">
+                    <h2>Audit Log</h2>
+                    <div id="auditLogContainer"></div>
+                    <button class="btn" id="auditClear">Șterge jurnal local</button>
+                </div>
+                <div class="card">
+                    <h2>Limitări</h2>
+                    <p>Toate rezultatele sunt indicatori tehnici. Interpretarea aparține specialistului. Nu se oferă concluzii automate.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="modal-close" id="modalClose">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p id="loadingText">Procesare...</p>
+    </div>
+
+    <script src="js/indexeddb.js"></script>
+    <script src="js/hash.js"></script>
+    <script src="js/exif.js"></script>
+    <script src="js/image-analysis.js"></script>
+    <script src="js/histogram.js"></script>
+    <script src="js/ela.js"></script>
+    <script src="js/comparison.js"></script>
+    <script src="js/measurement.js"></script>
+    <script src="js/video.js"></script>
+    <script src="js/timeline.js"></script>
+    <script src="js/ocr.js"></script>
+    <script src="js/report.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

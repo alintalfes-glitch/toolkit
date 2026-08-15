@@ -19,6 +19,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="assets/icons/icon-192.png">
     <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+    <!-- External libraries (cached by service worker) -->
     <script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -389,18 +390,24 @@
         </main>
     </div>
 
+    <!-- Toast -->
     <div id="toast" class="toast"></div>
-    <div id="modal" class="modal hidden">
+
+    <!-- Modal (initial hidden) -->
+    <div id="modal" class="modal hidden" style="display: none;">
         <div class="modal-content">
             <span class="modal-close" id="modalClose">&times;</span>
             <div id="modalBody"></div>
         </div>
     </div>
-    <div id="loadingOverlay" class="loading-overlay hidden">
+
+    <!-- Loading overlay (initial hidden, forced) -->
+    <div id="loadingOverlay" class="loading-overlay hidden" style="display: none;">
         <div class="spinner"></div>
         <p id="loadingText">Procesare...</p>
     </div>
 
+    <!-- Scripts -->
     <script src="js/indexeddb.js"></script>
     <script src="js/hash.js"></script>
     <script src="js/exif.js"></script>
